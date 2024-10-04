@@ -1,28 +1,54 @@
-async function sendMessage() {
-    const userMessage = document.getElementById('user-input').value;
-    const chatLog = document.getElementById('chat-log');
+const express = require('express');
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const { SessionsClient } = require('@google-cloud/dialogflow');
 
-    // Muestra el mensaje del usuario en el chat
-    chatLog.innerHTML += `<div><strong>Tú:</strong> ${userMessage}</div>`;
-    document.getElementById('user-input').value = '';
+// Crear el servidor Express
+const app = express();
+app.use(cors());
+app.use(bodyParser.json());
+
+// Inicializa el cliente de Dialogflow
+const projectId = 'tu-project-id'; // Reemplaza con tu project ID de Dialogflow
+const sessionClient = new SessionsClient({
+    keyFilename: 'dialogflow-credentials.json' // Reemplaza con la ruta correcta
+});
+
+// Ruta para manejar el webhook de Dialogflow
+app.post('/webhook', async (req, res) => {
+    const userMessage = req.body.message; // Mensaje que viene del frontend (HTML)
+    
+    // Crea la sesión de Dialogflow
+    const sessionPath = sessionClient.projectAgentSessionPath(
+        projectId,
+        Math.random().toString(36).substring(7) // Genera un ID de sesión aleatorio
+    );
+
+    const request = {
+        session: sessionPath,
+        queryInput: {
+            text: {
+                text: userMessage,
+                languageCode: 'es', // Idioma
+            },
+        },
+    };
 
     try {
-        const response = await fetch('https://caring-vitality.railway.app/webhook', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ message: userMessage }),
-        });
-
-        if (!response.ok) {
-            throw new Error('Error en la respuesta de la API');
-        }
-
-        const data = await response.json();
-        chatLog.innerHTML += `<div><strong>Bot:</strong> ${data.response}</div>`;
-        chatLog.scrollTop = chatLog.scrollHeight; // Desplaza el scroll al final
+        // Envía el mensaje del usuario a Dialogflow y recibe la respuesta
+        const responses = await sessionClient.detectIntent(request);
+        const result = responses[0].queryResult;
+        
+        // Enviar la respuesta de Dialogflow al frontend (HTML)
+        res.json({ response: result.fulfillmentText });
     } catch (error) {
-        chatLog.innerHTML += `<div><strong>Error:</strong> ${error.message}</div>`;
+        console.error('Error conectando con Dialogflow:', error);
+        res.status(500).json({ error: 'Error en el servidor' });
     }
-}
+});
+
+// Iniciar el servidor en Railway
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+    console.log(`Servidor corriendo en el puerto ${port}`);
+});
