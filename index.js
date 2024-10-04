@@ -1,53 +1,28 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-const { SessionsClient } = require('@google-cloud/dialogflow');
-const path = require('path');
-const fs = require('fs');
+async function sendMessage() {
+    const userMessage = document.getElementById('user-input').value;
+    const chatLog = document.getElementById('chat-log');
 
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Middleware
-app.use(cors());
-app.use(bodyParser.json());
-
-// Cargar las credenciales de Dialogflow
-const credentials = JSON.parse(fs.readFileSync(path.join(__dirname, 'dialogflow-credentials.json')));
-const sessionClient = new SessionsClient({ credentials });
-
-const projectId = credentials.project_id;
-const sessionId = 'session-id';
-const sessionPath = sessionClient.projectAgentSessionPath(projectId, sessionId);
-
-// Endpoint para recibir mensajes del frontend
-app.post('/webhook', async (req, res) => {
-    const userMessage = req.body.message;
-
-    const request = {
-        session: sessionPath,
-        queryInput: {
-            text: {
-                text: userMessage,
-                languageCode: 'es', // Cambia esto al idioma que prefieras
-            },
-        },
-    };
+    // Muestra el mensaje del usuario en el chat
+    chatLog.innerHTML += `<div><strong>Tú:</strong> ${userMessage}</div>`;
+    document.getElementById('user-input').value = '';
 
     try {
-        const responses = await sessionClient.detectIntent(request);
-        const result = responses[0].queryResult;
+        const response = await fetch('https://caring-vitality.railway.app/webhook', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ message: userMessage }),
+        });
 
-        return res.json({ response: result.fulfillmentText });
+        if (!response.ok) {
+            throw new Error('Error en la respuesta de la API');
+        }
+
+        const data = await response.json();
+        chatLog.innerHTML += `<div><strong>Bot:</strong> ${data.response}</div>`;
+        chatLog.scrollTop = chatLog.scrollHeight; // Desplaza el scroll al final
     } catch (error) {
-        console.error('Error en Dialogflow:', error);
-        return res.status(500).send('Error en el servidor');
+        chatLog.innerHTML += `<div><strong>Error:</strong> ${error.message}</div>`;
     }
-});
-
-// Servir el frontend
-app.use(express.static(path.join(__dirname, 'public')));
-
-app.listen(PORT, () => {
-    console.log(`Servidor corriendo en http://localhost:${PORT}`);
-});
+}
