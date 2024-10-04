@@ -1,35 +1,27 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const cors = require('cors');
-const { SessionsClient } = require('@google-cloud/dialogflow');
-const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
 app.use(bodyParser.json());
 
-// Carga de las credenciales
-const sessionClient = new SessionsClient();
+// Manejo de solicitudes POST para el chatbot
+app.post('/chat', (req, res) => {
+    const userMessage = req.body.message;
 
-const projectId = 'tu-proyecto-id'; // Reemplaza esto con tu ID de proyecto real
-const sessionPath = sessionClient.projectAgentSessionPath(projectId, 'session-id');
+    // Lógica simple de respuesta (puedes expandir esto)
+    let botResponse = '';
 
-app.post('/webhook', async (req, res) => {
-    const { queryInput } = req.body;
-
-    try {
-        const responses = await sessionClient.detectIntent({ session: sessionPath, queryInput });
-        const result = responses[0].queryResult;
-
-        return res.json({
-            fulfillmentText: result.fulfillmentText,
-        });
-    } catch (error) {
-        console.error('Error al procesar la solicitud:', error);
-        return res.status(500).send('Error en el servidor');
+    if (userMessage.includes('hola')) {
+        botResponse = '¡Hola! ¿Cómo puedo ayudarte hoy?';
+    } else if (userMessage.includes('adiós')) {
+        botResponse = '¡Hasta luego! Que tengas un buen día.';
+    } else {
+        botResponse = 'Lo siento, no entendí tu mensaje.';
     }
+
+    return res.json({ response: botResponse });
 });
 
 app.listen(PORT, () => {
