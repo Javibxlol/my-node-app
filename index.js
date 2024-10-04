@@ -1,28 +1,37 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const cors = require('cors');
+const { SessionsClient } = require('@google-cloud/dialogflow');
+const path = require('path');
+
 const app = express();
+const PORT = process.env.PORT || 3000;
 
-// Usa el puerto proporcionado por Railway o un puerto por defecto
-const PORT = process.env.PORT || 8080;
-
+app.use(cors());
 app.use(bodyParser.json());
 
-app.post('/webhook', (req, res) => {
-    const intentName = req.body.queryResult.intent.displayName;
-    let responseText = 'Lo siento, no entendí eso.';
+// Carga de las credenciales
+const sessionClient = new SessionsClient();
 
-    // Manejo de intenciones
-    if (intentName === 'Default Welcome Intent') {
-        responseText = '¡Hola! ¿Cómo puedo ayudarte?';
+const projectId = 'tu-proyecto-id'; // Reemplaza esto con tu ID de proyecto real
+const sessionPath = sessionClient.projectAgentSessionPath(projectId, 'session-id');
+
+app.post('/webhook', async (req, res) => {
+    const { queryInput } = req.body;
+
+    try {
+        const responses = await sessionClient.detectIntent({ session: sessionPath, queryInput });
+        const result = responses[0].queryResult;
+
+        return res.json({
+            fulfillmentText: result.fulfillmentText,
+        });
+    } catch (error) {
+        console.error('Error al procesar la solicitud:', error);
+        return res.status(500).send('Error en el servidor');
     }
-
-    // Devuelve la respuesta a Dialogflow
-    res.json({
-        fulfillmentText: responseText,
-    });
 });
 
-// Escucha en el puerto definido
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });
