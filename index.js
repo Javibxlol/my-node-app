@@ -8,15 +8,16 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Middleware
 app.use(cors());
 app.use(bodyParser.json());
 
-// Carga de credenciales
+// Cargar las credenciales de Dialogflow
 const credentials = JSON.parse(fs.readFileSync(path.join(__dirname, 'dialogflow-credentials.json')));
 const sessionClient = new SessionsClient({ credentials });
 
-const projectId = credentials.project_id; // Obtener el ID del proyecto de las credenciales
-const sessionId = 'session-id'; // Puedes generar un ID único para cada sesión
+const projectId = credentials.project_id;
+const sessionId = 'session-id';
 const sessionPath = sessionClient.projectAgentSessionPath(projectId, sessionId);
 
 // Endpoint para recibir mensajes del frontend
@@ -28,7 +29,7 @@ app.post('/webhook', async (req, res) => {
         queryInput: {
             text: {
                 text: userMessage,
-                languageCode: 'es', // Cambia esto a tu idioma preferido
+                languageCode: 'es', // Cambia esto al idioma que prefieras
             },
         },
     };
@@ -44,7 +45,7 @@ app.post('/webhook', async (req, res) => {
     }
 });
 
-// Ruta para servir el frontend
+// Servir el frontend
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.listen(PORT, () => {
