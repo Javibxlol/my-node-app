@@ -3,21 +3,20 @@ const bodyParser = require('body-parser');
 const app = express();
 
 // Usa el puerto proporcionado por Railway o un puerto por defecto
-const PORT = process.env.PORT || 3000;  // Cambia 8000 a 3000 si lo tenías así
+const PORT = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 
 app.post('/webhook', (req, res) => {
     const intentName = req.body.queryResult.intent.displayName;
-    let responseText = '';
+    let responseText = 'Lo siento, no entendí eso.';
 
-    // Lógica de respuesta
+    // Manejo de intenciones
     if (intentName === 'Default Welcome Intent') {
         responseText = '¡Hola! ¿Cómo puedo ayudarte?';
-    } else {
-        responseText = 'Lo siento, no entendí eso.';
     }
 
+    // Devuelve la respuesta a Dialogflow
     res.json({
         fulfillmentText: responseText,
     });
