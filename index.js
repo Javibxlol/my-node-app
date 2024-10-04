@@ -3,7 +3,7 @@ const bodyParser = require('body-parser');
 const app = express();
 
 // Usa el puerto proporcionado por Railway o un puerto por defecto
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 app.use(bodyParser.json());
 
