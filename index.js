@@ -1,28 +1,48 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const app = express();
+<script>
+    const sendButton = document.getElementById('send-button');
+    const userInput = document.getElementById('user-input');
+    const messagesDiv = document.getElementById('messages');
 
-// Usa el puerto proporcionado por Railway o un puerto por defecto
-const PORT = process.env.PORT || 8080;
+    sendButton.addEventListener('click', async () => {
+        const userMessage = userInput.value;
+        if (!userMessage) return;  // Evita enviar mensajes vacíos
 
-app.use(bodyParser.json());
+        // Muestra el mensaje del usuario en la interfaz
+        messagesDiv.innerHTML += `<div class="message user">Tú: ${userMessage}</div>`;
+        userInput.value = '';
 
-app.post('/webhook', (req, res) => {
-    const intentName = req.body.queryResult.intent.displayName;
-    let responseText = 'Lo siento, no entendí eso.';
+        try {
+            // Llama al webhook de Dialogflow
+            const response = await fetch('https://caring-vitality.railway.app/webhook', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    queryInput: {
+                        text: {
+                            text: userMessage,
+                            languageCode: 'es',  // Cambia esto si utilizas otro idioma
+                        },
+                    },
+                }),
+            });
 
-    // Manejo de intenciones
-    if (intentName === 'Default Welcome Intent') {
-        responseText = '¡Hola! ¿Cómo puedo ayudarte?';
-    }
+            // Maneja errores en la respuesta
+            if (!response.ok) {
+                throw new Error('Error en la respuesta del servidor');
+            }
 
-    // Devuelve la respuesta a Dialogflow
-    res.json({
-        fulfillmentText: responseText,
+            const data = await response.json();
+            const botMessage = data.fulfillmentText;  // Obtén el mensaje del bot
+
+            // Muestra el mensaje del bot en la interfaz
+            messagesDiv.innerHTML += `<div class="message bot">Bot: ${botMessage}</div>`;
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;  // Desplazarse hacia abajo
+        } catch (error) {
+            console.error('Error:', error);
+            // Muestra un mensaje de error si no se puede obtener la respuesta
+            messagesDiv.innerHTML += `<div class="message bot">Bot: No pude obtener respuesta del servidor.</div>`;
+        }
     });
-});
-
-// Escucha en el puerto definido
-app.listen(PORT, () => {
-    console.log(`Servidor corriendo en http://localhost:${PORT}`);
-});
+</script>
