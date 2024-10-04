@@ -3,32 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chatbot</title>
-    <script src="index.js" defer></script>
+    <title>Chatbot con Dialogflow</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
         #chat-log {
+            width: 100%;
+            max-width: 500px;
+            height: 300px;
+            overflow-y: auto;
             border: 1px solid #ccc;
             padding: 10px;
-            height: 300px;
-            overflow-y: scroll;
             margin-bottom: 10px;
         }
+
         #user-input {
-            width: 100%;
+            width: 70%;
             padding: 10px;
+            font-size: 16px;
         }
+
         button {
-            padding: 10px 20px;
+            padding: 10px;
+            font-size: 16px;
         }
     </style>
 </head>
 <body>
-    <h1>Chatbot</h1>
+    <h1>Chat con Dialogflow</h1>
     <div id="chat-log"></div>
     <input type="text" id="user-input" placeholder="Escribe un mensaje...">
     <button onclick="sendMessage()">Enviar</button>
+
+    <script>
+        async function sendMessage() {
+            const userMessage = document.getElementById('user-input').value;
+            
+            // Agregar el mensaje del usuario al chat-log
+            document.getElementById('chat-log').innerHTML += `<div><strong>Tú:</strong> ${userMessage}</div>`;
+
+            // Llamada al webhook de Dialogflow en Railway
+            const response = await fetch('https://tu-proyecto-railway.up.railway.app/webhook', { 
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    queryResult: { queryText: userMessage }  // Simulando la estructura que envía Dialogflow
+                }),
+            });
+
+            const data = await response.json();
+
+            // Agregar la respuesta del bot al chat-log
+            document.getElementById('chat-log').innerHTML += `<div><strong>Bot:</strong> ${data.fulfillmentText}</div>`;
+            document.getElementById('user-input').value = ''; // Limpiar el campo de entrada
+        }
+    </script>
 </body>
 </html>
