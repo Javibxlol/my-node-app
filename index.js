@@ -1,54 +1,61 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-const { SessionsClient } = require('@google-cloud/dialogflow');
+// See https://github.com/dialogflow/dialogflow-fulfillment-nodejs
+// for Dialogflow fulfillment library docs, samples, and to report issues
+'use strict';
+ 
+const functions = require('firebase-functions');
+const {WebhookClient} = require('dialogflow-fulfillment');
+const {Card, Suggestion} = require('dialogflow-fulfillment');
+ 
+process.env.DEBUG = 'dialogflow:debug'; // enables lib debugging statements
+ 
+exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, response) => {
+  const agent = new WebhookClient({ request, response });
+  console.log('Dialogflow Request headers: ' + JSON.stringify(request.headers));
+  console.log('Dialogflow Request body: ' + JSON.stringify(request.body));
+ 
+  function welcome(agent) {
+    agent.add(`Welcome to my agent!`);
+  }
+ 
+  function fallback(agent) {
+    agent.add(`I didn't understand`);
+    agent.add(`I'm sorry, can you try again?`);
+  }
 
-// Crear el servidor Express
-const app = express();
-app.use(cors());
-app.use(bodyParser.json());
+  // // Uncomment and edit to make your own intent handler
+  // // uncomment `intentMap.set('your intent name here', yourFunctionHandler);`
+  // // below to get this function to be run when a Dialogflow intent is matched
+  // function yourFunctionHandler(agent) {
+  //   agent.add(`This message is from Dialogflow's Cloud Functions for Firebase editor!`);
+  //   agent.add(new Card({
+  //       title: `Title: this is a card title`,
+  //       imageUrl: 'https://developers.google.com/actions/images/badges/XPM_BADGING_GoogleAssistant_VER.png',
+  //       text: `This is the body text of a card.  You can even use line\n  breaks and emoji! 💁`,
+  //       buttonText: 'This is a button',
+  //       buttonUrl: 'https://assistant.google.com/'
+  //     })
+  //   );
+  //   agent.add(new Suggestion(`Quick Reply`));
+  //   agent.add(new Suggestion(`Suggestion`));
+  //   agent.setContext({ name: 'weather', lifespan: 2, parameters: { city: 'Rome' }});
+  // }
 
-// Inicializa el cliente de Dialogflow
-const projectId = 'tu-project-id'; // Reemplaza con tu project ID de Dialogflow
-const sessionClient = new SessionsClient({
-    keyFilename: 'dialogflow-credentials.json' // Reemplaza con la ruta correcta
-});
+  // // Uncomment and edit to make your own Google Assistant intent handler
+  // // uncomment `intentMap.set('your intent name here', googleAssistantHandler);`
+  // // below to get this function to be run when a Dialogflow intent is matched
+  // function googleAssistantHandler(agent) {
+  //   let conv = agent.conv(); // Get Actions on Google library conv instance
+  //   conv.ask('Hello from the Actions on Google client library!') // Use Actions on Google library
+  //   agent.add(conv); // Add Actions on Google library responses to your agent's response
+  // }
+  // // See https://github.com/dialogflow/fulfillment-actions-library-nodejs
+  // // for a complete Dialogflow fulfillment library Actions on Google client library v2 integration sample
 
-// Ruta para manejar el webhook de Dialogflow
-app.post('/webhook', async (req, res) => {
-    const userMessage = req.body.message; // Mensaje que viene del frontend (HTML)
-    
-    // Crea la sesión de Dialogflow
-    const sessionPath = sessionClient.projectAgentSessionPath(
-        projectId,
-        Math.random().toString(36).substring(7) // Genera un ID de sesión aleatorio
-    );
-
-    const request = {
-        session: sessionPath,
-        queryInput: {
-            text: {
-                text: userMessage,
-                languageCode: 'es', // Idioma
-            },
-        },
-    };
-
-    try {
-        // Envía el mensaje del usuario a Dialogflow y recibe la respuesta
-        const responses = await sessionClient.detectIntent(request);
-        const result = responses[0].queryResult;
-        
-        // Enviar la respuesta de Dialogflow al frontend (HTML)
-        res.json({ response: result.fulfillmentText });
-    } catch (error) {
-        console.error('Error conectando con Dialogflow:', error);
-        res.status(500).json({ error: 'Error en el servidor' });
-    }
-});
-
-// Iniciar el servidor en Railway
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-    console.log(`Servidor corriendo en el puerto ${port}`);
+  // Run the proper function handler based on the matched Dialogflow intent name
+  let intentMap = new Map();
+  intentMap.set('Default Welcome Intent', welcome);
+  intentMap.set('Default Fallback Intent', fallback);
+  // intentMap.set('your intent name here', yourFunctionHandler);
+  // intentMap.set('your intent name here', googleAssistantHandler);
+  agent.handleRequest(intentMap);
 });
