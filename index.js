@@ -1,48 +1,40 @@
-<script>
-    const sendButton = document.getElementById('send-button');
-    const userInput = document.getElementById('user-input');
-    const messagesDiv = document.getElementById('messages');
+// Importar dependencias
+const express = require('express');
+const bodyParser = require('body-parser');
+const cors = require('cors'); // Agregar soporte para CORS
+const { SessionsClient } = require('@google-cloud/dialogflow'); // Importar el cliente de Dialogflow
 
-    sendButton.addEventListener('click', async () => {
-        const userMessage = userInput.value;
-        if (!userMessage) return;  // Evita enviar mensajes vacíos
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-        // Muestra el mensaje del usuario en la interfaz
-        messagesDiv.innerHTML += `<div class="message user">Tú: ${userMessage}</div>`;
-        userInput.value = '';
+// Configurar middleware
+app.use(cors()); // Habilitar CORS
+app.use(bodyParser.json()); // Parsear JSON
 
-        try {
-            // Llama al webhook de Dialogflow
-            const response = await fetch('https://caring-vitality.railway.app/webhook', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    queryInput: {
-                        text: {
-                            text: userMessage,
-                            languageCode: 'es',  // Cambia esto si utilizas otro idioma
-                        },
-                    },
-                }),
-            });
+// Crear cliente de Dialogflow
+const projectId = 'tu-proyecto-id'; // Reemplaza con tu ID de proyecto
+const sessionClient = new SessionsClient();
+const sessionPath = sessionClient.projectAgentSessionPath(projectId, 'session-id'); // Puedes cambiar 'session-id' por cualquier identificador único
 
-            // Maneja errores en la respuesta
-            if (!response.ok) {
-                throw new Error('Error en la respuesta del servidor');
-            }
+// Endpoint para manejar el webhook
+app.post('/webhook', async (req, res) => {
+    const { queryInput } = req.body; // Obtener la entrada del usuario
 
-            const data = await response.json();
-            const botMessage = data.fulfillmentText;  // Obtén el mensaje del bot
+    try {
+        const responses = await sessionClient.detectIntent({ session: sessionPath, queryInput });
+        const result = responses[0].queryResult; // Obtener el resultado
 
-            // Muestra el mensaje del bot en la interfaz
-            messagesDiv.innerHTML += `<div class="message bot">Bot: ${botMessage}</div>`;
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;  // Desplazarse hacia abajo
-        } catch (error) {
-            console.error('Error:', error);
-            // Muestra un mensaje de error si no se puede obtener la respuesta
-            messagesDiv.innerHTML += `<div class="message bot">Bot: No pude obtener respuesta del servidor.</div>`;
-        }
-    });
-</script>
+        // Enviar respuesta de vuelta al frontend
+        return res.json({
+            fulfillmentText: result.fulfillmentText, // Texto de respuesta del bot
+        });
+    } catch (error) {
+        console.error('Error al procesar la solicitud:', error);
+        return res.status(500).send('Error en el servidor');
+    }
+});
+
+// Iniciar el servidor
+app.listen(PORT, () => {
+    console.log(`Servidor corriendo en http://localhost:${PORT}`);
+});
